@@ -1,0 +1,174 @@
+================================================================================
+DOKUMEN KODE PROGRAM & PEMROGRAMAN
+SKEMA SERTIFIKASI: PEMROGRAM MUDA (ASSOCIATE PROGRAMMER)
+Kode Dokumen: FR.IA.02 - Tugas Praktik Demonstrasi | LSP EDI
+Judul Aplikasi: Sistem Informasi Perpustakaan Digital (Manajemen Buku)
+================================================================================
+
+--------------------------------------------------------------------------------
+A. SPESIFIKASI LINGKUNGAN PENGEMBANGAN (TOOLS & ENVIRONMENT)
+--------------------------------------------------------------------------------
+
+1. Tools / Software Pemrograman yang Digunakan:
+   - Text Editor / IDE: Visual Studio Code / Antigravity IDE
+   - Web Server: Apache (via XAMPP v8.2)
+   - Database Management System (DBMS): MySQL Server 8.3 / MariaDB
+   - Web Browser: Google Chrome / Microsoft Edge
+
+2. Bahasa Pemrograman yang Digunakan:
+   - PHP v8.2: Logika Backend, Enkapsulasi OOP, dan Koneksi Basis Data PDO.
+   - HTML5 & CSS3: Struktur antarmuka dan tata letak gaya UI.
+   - JavaScript (ES6): Interaktivitas modal dialog dan pemicu ekspor PDF.
+
+3. Library, Komponen Pre-existing, & Framework:
+   - Bootstrap v5.3 (CDN): Framework CSS untuk tata letak responsif.
+   - FontAwesome v6.4 (CDN): Library ikon visual.
+   - html2pdf.js / jsPDF (CDN): Library pihak ketiga (3rd Party Library) untuk eksport PDF.
+   - Google Fonts (Inter & Plus Jakarta Sans): Tipografi web modern.
+
+
+--------------------------------------------------------------------------------
+B. DOKUMENTASI KODE PROGRAM & ARSITEKTUR SISTEM (OOP)
+--------------------------------------------------------------------------------
+
+Sistem dibangun menggunakan paradigma Pemrograman Berorientasi Objek (OOP) dengan struktur modular:
+
+1. Class Database (classes/Database.php)
+   - Fungsi: Mengelola koneksi ke database MySQL menggunakan driver PDO.
+   - Penerapan OOP: Singleton Pattern & Encapsulation. Memiliki fitur Auto-Migration tabel otomatis.
+   - Metode Utama: getInstance(), getConnection(), initTables().
+
+2. Class Auth (classes/Auth.php)
+   - Fungsi: Mengelola proses login autentikasi, verifikasi kata sandi (password_verify), dan session pengguna.
+   - Metode Utama: login($username, $password), check(), user(), logout().
+
+3. Class Buku (classes/Buku.php)
+   - Fungsi: Mengelola operasi CRUD data buku (Create, Read, Update, Delete), pencarian kata kunci, dan filter kategori.
+   - Metode Utama: getAll($search, $kategori_id), getById($id), create($data), update($id, $data), delete($id), count().
+
+4. Class Kategori (classes/Kategori.php)
+   - Fungsi: Mengelola operasi CRUD data kategori/genre buku.
+   - Metode Utama: getAll(), getById($id), create($nama, $deskripsi), update($id, $nama, $deskripsi), delete($id), count().
+
+5. Class Peminjaman (classes/Peminjaman.php)
+   - Fungsi: Mengelola transaksi sirkulasi peminjaman/pengembalian buku serta otomatisasi pembaruan stok.
+   - Metode Utama: getAll(), create($data), returnBook($id, $id_buku), delete($id), countActive().
+
+
+--------------------------------------------------------------------------------
+C. DAFTAR HALAMAN & MODUL TAMPILAN (MINIMAL 5 TAMPILAN)
+--------------------------------------------------------------------------------
+
+1. Halaman 1 (Auth/login.php): Halaman Autentikasi Pengguna & Form Login.
+2. Halaman 2 (Dashboard/dashboard.php): Dashboard Utama Ringkasan Statistik & Widget Aktivitas.
+3. Halaman 3 (Buku/buku.php): Pengelolaan Data Buku (CRUD), Modal Form, & Filter Pencarian.
+4. Halaman 4 (Kategori/kategori.php): Pengelolaan Kategori Buku (CRUD) dalam Tabel Responsif.
+5. Halaman 5 (Peminjaman/peminjaman.php): Transaksi Peminjaman, Pengembalian, & Integrasi Cetak PDF.
+6. Halaman Laporan (Laporan/cetak_pdf.php): Ekspor Laporan Rekapitulasi Berformat PDF (html2pdf.js).
+
+
+--------------------------------------------------------------------------------
+D. HASIL PENGUJIANKODE & DEBUGGING (KELOMPOK PEKERJAAN 2)
+--------------------------------------------------------------------------------
+
+No | Fitur / Unit      | Pengujian Skenario                     | Hasil Diharapkan                | Status
+----------------------------------------------------------------------------------------------------------
+1  | Autentikasi       | Login username & password valid        | Berhasil masuk ke dashboard     | PASS
+2  | Autentikasi       | Login password salah                   | Menampilkan pesan error validasi| PASS
+3  | CRUD Data Buku    | Tambah buku baru                       | Data tersimpan di DB & tabel    | PASS
+4  | CRUD Data Buku    | Edit data buku & ubah stok             | Data di DB ter-update akurat    | PASS
+5  | Filter & Search   | Cari judul buku / filter kategori      | Tabel menampilkan hasil filter  | PASS
+6  | Peminjaman Buku   | Catat peminjaman baru                  | Stok buku berkurang 1 otomatis  | PASS
+7  | Pengembalian Buku | Klik tombol kembalikan buku            | Status berubah & stok +1        | PASS
+8  | Cetak Laporan PDF | Klik tombol Cetak Laporan PDF          | File PDF ter-generate sempurna  | PASS
+
+
+--------------------------------------------------------------------------------
+E. LAMPIRAN SOURCE CODE FILE UTAMA
+--------------------------------------------------------------------------------
+
+1. File: classes/Database.php
+--------------------------------------------------------------------------------
+<?php
+class Database {
+    private static $instance = null;
+    private $host = "localhost";
+    private $db_name = "db_perpustakaan";
+    private $username = "root";
+    private $password = "";
+    private $conn;
+
+    private function __construct() {
+        try {
+            $this->conn = new PDO("mysql:host=" . $this->host . ";charset=utf8mb4", $this->username, $this->password, [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+            ]);
+            $this->conn->exec("CREATE DATABASE IF NOT EXISTS `" . $this->db_name . "` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+            $this->conn->exec("USE `" . $this->db_name . "`");
+            $this->initTables();
+        } catch (PDOException $e) {
+            die("Koneksi Database Gagal: " . $e->getMessage());
+        }
+    }
+
+    public static function getInstance() {
+        if (self::$instance === null) {
+            self::$instance = new Database();
+        }
+        return self::$instance;
+    }
+
+    public function getConnection() {
+        return $this->conn;
+    }
+}
+?>
+
+2. File: classes/Buku.php
+--------------------------------------------------------------------------------
+<?php
+require_once __DIR__ . '/Database.php';
+
+class Buku {
+    private $db;
+    private $table = "buku";
+
+    public function __construct() {
+        $this->db = Database::getInstance()->getConnection();
+    }
+
+    public function getAll($search = '', $kategori_id = '') {
+        $query = "SELECT b.*, k.nama_kategori FROM " . $this->table . " b LEFT JOIN kategori k ON b.id_kategori = k.id WHERE 1=1";
+        if (!empty($search)) {
+            $query .= " AND (b.judul LIKE :search OR b.pengarang LIKE :search OR b.isbn LIKE :search)";
+        }
+        if (!empty($kategori_id)) {
+            $query .= " AND b.id_kategori = :kategori_id";
+        }
+        $query .= " ORDER BY b.id DESC";
+        $stmt = $this->db->prepare($query);
+        if (!empty($search)) {
+            $search_param = "%" . $search . "%";
+            $stmt->bindParam(':search', $search_param);
+        }
+        if (!empty($kategori_id)) {
+            $stmt->bindParam(':kategori_id', $kategori_id);
+        }
+        $stmt->execute();
+        return $stmt->fetchAll();
+    }
+}
+?>
+
+
+================================================================================
+LEMBAR PENGESAHAN HASIL DEMONSTRASI
+================================================================================
+
+Mengetahui,                                 Dibuat Oleh,
+Asesor Competency                           Asesi / Pemrogram Muda
+
+
+( ________________________ )                ( ________________________ )
+No. Reg: __________________                 Tanggal: 24 / 07 / 2026
